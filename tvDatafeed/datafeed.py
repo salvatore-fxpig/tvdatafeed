@@ -93,8 +93,9 @@ class TvDatafeedLive(tvDatafeed.TvDatafeed):
             
             while True: # might need to restart waiting if trigger_dt changes and interrupted when waiting
                 wait_time=self._trigger_dt-dt.now() # calculate the time to next expiry
+                interrupted = self._trigger_interrupt.wait(wait_time.total_seconds())
                 
-                if (interrupted := self._trigger_interrupt.wait(wait_time.total_seconds())) and self._trigger_quit: # if we received a shutdown event during waiting
+                if interrupted and self._trigger_quit: # if we received a shutdown event during waiting
                     return False 
                 elif not interrupted: # if not interrupted then no more waiting needed
                     self._trigger_interrupt.clear() # in case waiting was interrupted, but not quit - reset the event flag
@@ -135,8 +136,9 @@ class TvDatafeedLive(tvDatafeed.TvDatafeed):
                 else:
                     update_dt= update_dt + self._timeframes[seis.interval.value] # change the time to next update datetime (result will be datetime object)
                     self.__setitem__(seis.interval.value, [[seis], update_dt]) 
-                    
-                    if (trigger_dt := self._next_trigger_dt()) != self._trigger_dt: # if new interval group expiry is sooner than current expiry being waited on
+                    trigger_dt = self._next_trigger_dt()
+
+                    if trigger_dt != self._trigger_dt: # if new interval group expiry is sooner than current expiry being waited on
                         self._trigger_dt=trigger_dt
                         self._trigger_interrupt.set()
            
@@ -147,9 +149,10 @@ class TvDatafeedLive(tvDatafeed.TvDatafeed):
             else:
                 super().__getitem__(seis.interval.value)[0].remove(seis)
                 if not super().__getitem__(seis.interval.value)[0]: # if interval group now empty then remove it
-                    self.pop(seis.interval.value)    
+                    self.pop(seis.interval.value)   
+                    trigger_dt = self._next_trigger_dt() 
                     
-                    if ((trigger_dt := self._next_trigger_dt()) != self._trigger_dt) and (self._trigger_quit is False): # if interval group expiry dt was being waited on and havent quit
+                    if (trigger_dt != self._trigger_dt) and (self._trigger_quit is False): # if interval group expiry dt was being waited on and havent quit
                         self._trigger_dt=trigger_dt
                         self._trigger_interrupt.set()
             
@@ -238,7 +241,8 @@ class TvDatafeedLive(tvDatafeed.TvDatafeed):
         if self._args_invalid(symbol, exchange):
             raise ValueError("Provided symbol and exchange combination is not listed in TradingView")
         
-        if seis := self._sat.get_seis(symbol, exchange, interval): # if Seis with such parameters already exists then simply return that
+        seis = self._sat.get_seis(symbol, exchange, interval)
+        if seis: # if Seis with such parameters already exists then simply return that
             return seis
         
         new_seis=tvDatafeed.Seis(symbol, exchange, interval)
