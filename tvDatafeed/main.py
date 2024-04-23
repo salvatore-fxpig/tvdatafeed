@@ -40,6 +40,7 @@ class TvDatafeed:
         self,
         username: str = None,
         password: str = None,
+        proxy: str = None
     ) -> None:
         """Create TvDatafeed object
 
@@ -62,6 +63,30 @@ class TvDatafeed:
         self.session = self.__generate_session()
         self.chart_session = self.__generate_chart_session()
 
+        self.proxies = None
+        self.proxyConfig = {}
+        if proxy:
+            self.proxies = {
+                "http": proxy,
+                "https": proxy,
+            }
+            while proxy.endswith("/"):
+                proxy = proxy[0:-1]
+            proxyParts = proxy.split("//")[1].split("@")
+            proxyAuth = None
+            if len(proxyParts) == 2:
+                proxyAuth = tuple(proxyParts[0].split(":"))
+            proxyParts = proxyParts[-1].split(":")
+            proxyPort = None
+            if len(proxyParts) == 2:
+                proxyPort = proxyParts[1]
+            proxyHost = proxyParts[0]
+            self.proxyConfig = {
+                "http_proxy_host": proxyHost,
+                "http_proxy_auth": proxyAuth,
+                "http_proxy_port": proxyPort
+            }
+
     def __auth(self, username, password):
 
         if (username is None or password is None):
@@ -73,7 +98,7 @@ class TvDatafeed:
                     "remember": "on"}
             try:
                 response = requests.post(
-                    url=self.__sign_in_url, data=data, headers=self.__signin_headers)
+                    url=self.__sign_in_url, data=data, headers=self.__signin_headers, proxies=self.proxies)
                 token = response.json()['user']['auth_token']
             except Exception as e:
                 logger.error('error while signin')
@@ -84,7 +109,8 @@ class TvDatafeed:
     def __create_connection(self):
         logging.debug("creating websocket connection")
         self.ws = create_connection(
-            "wss://data.tradingview.com/socket.io/websocket", headers=self.__ws_headers, timeout=self.__ws_timeout
+            "wss://data.tradingview.com/socket.io/websocket", headers=self.__ws_headers, timeout=self.__ws_timeout,
+            **self.proxyConfig
         )
 
     @staticmethod
@@ -193,6 +219,7 @@ class TvDatafeed:
         n_bars: int = 10,
         fut_contract: int = None,
         extended_session: bool = False,
+        backadjustment: bool = False
     ) -> pd.DataFrame:
         """get historical data
 
@@ -263,6 +290,7 @@ class TvDatafeed:
                 + symbol
                 + '","adjustment":"splits","session":'
                 + ('"regular"' if not extended_session else '"extended"')
+                + (',"backadjustment":"default"' if backadjustment else "")
                 + "}",
             ],
         )
