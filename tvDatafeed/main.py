@@ -288,7 +288,7 @@ class TvDatafeed:
                 "symbol_1",
                 '={"symbol":"'
                 + symbol
-                + '","adjustment":"splits","session":'
+                + f'","adjustment":"{"dividends" if backadjustment else "splits"}","session":'
                 + ('"regular"' if not extended_session else '"extended"')
                 + (',"backadjustment":"default"' if backadjustment else "")
                 + "}",
