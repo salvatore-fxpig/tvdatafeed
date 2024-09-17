@@ -165,9 +165,13 @@ class TvDatafeed:
             volume_data = True
 
             for xi in x:
-                xi = re.split("\[|:|,|\]", xi)
-                ts = datetime.datetime.fromtimestamp(float(xi[4]))
-
+                xi = re.split("\[|:|,|\]", xi)    
+                try:
+                    ts = datetime.datetime.fromtimestamp(float(xi[4]))
+                except OSError:
+                    # Windows bonks negative timestamps... https://bugs.python.org/issue36439
+                    ts = datetime.datetime.fromtimestamp(float(xi[4])) + datetime.timedelta(seconds=float(xi[4]))
+            
                 row = [ts]
 
                 for i in range(5, 10):
