@@ -170,7 +170,7 @@ class TvDatafeed:
                     ts = datetime.datetime.fromtimestamp(float(xi[4]))
                 except OSError:
                     # Windows bonks negative timestamps... https://bugs.python.org/issue36439
-                    ts = datetime.datetime.fromtimestamp(float(xi[4])) + datetime.timedelta(seconds=float(xi[4]))
+                    ts = datetime.datetime.fromtimestamp(0) + datetime.timedelta(seconds=float(xi[4]))
             
                 row = [ts]
 
